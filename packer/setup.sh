@@ -1,30 +1,32 @@
 #!/bin/bash
 
-# update
-sudo apt-get update -y 
+set -eouf pipefail
 
-# install apt deps
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-	build-essential \
-	python-dev \
-	python-pip \
-	libffi-dev \
-    python-pip-whl \
-	zip
+CTFD_VERSION=${CTFD_VERSION}
 
-# install pip deps
-pip install gunicorn virtualenv ansible awscli
+# update and install os packages
+sudo apt update -y &&
+    sudo apt install -y python3-pip
 
-#get ctfd
-wget -q https://github.com/CTFd/CTFd/archive/2.5.0.zip
-sudo unzip 2.5.0.zip -d /opt
+# configure pip
+export PATH=$PATH:$HOME/.local/bin
+echo "PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc
 
-# create ctfd user
-sudo useradd ctfd -d /opt/CTFd-2.5.0
-sudo chown -R ctfd.ctfd /opt/CTFd-2.5.0
+# install ansible
+pip install ansible
 
-# install python deps
-sudo su ctfd -c "pip install virtualenv --user"
-sudo su ctfd -c "/opt/CTFd-2.5.0/.local/bin/virtualenv /opt/CTFd-2.5.0"
-sudo su ctfd -c "/opt/CTFd-2.5.0/bin/pip install -r /opt/CTFd-2.5.0/requirements.txt"
+# get ctfd source
+wget https://github.com/CTFd/CTFd/archive/refs/tags/${CTFD_VERSION}.tar.gz
+sudo tar xzvf ${CTFD_VERSION}.tar.gz -C /opt
 
+# fix permissions
+sudo chown -R $USER.$USER /opt/CTFd-${CTFD_VERSION}
+sudo chmod 775 /opt/CTFd-${CTFD_VERSION}/.
+
+# install docker
+sudo bash /opt/CTFd-${CTFD_VERSION}/scripts/install_docker.sh
+
+# build and pull all the containers
+cd /opt/CTFd-${CTFD_VERSION}
+sudo docker-compose pull
+sudo docker build .
