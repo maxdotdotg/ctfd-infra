@@ -6,7 +6,25 @@ CTFD_VERSION=${CTFD_VERSION}
 
 # update and install os packages
 sudo apt update -y &&
-    sudo apt install -y python3-pip
+    sudo apt install -y python3-pip \
+        make \
+        build-essential \
+        libssl-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        wget \
+        curl \
+        llvm \
+        libncursesw5-dev \
+        xz-utils \
+        tk-dev \
+        libxml2-dev \
+        libxmlsec1-dev \
+        libffi-dev \
+        liblzma-dev
+
 
 # configure pip
 export PATH=$PATH:$HOME/.local/bin
@@ -19,14 +37,26 @@ pip install ansible
 wget https://github.com/CTFd/CTFd/archive/refs/tags/${CTFD_VERSION}.tar.gz
 sudo tar xzvf ${CTFD_VERSION}.tar.gz -C /opt
 
+sudo useradd ctfd -d /opt/CTFd-${CTFD_VERSION}
+
 # fix permissions
-sudo chown -R $USER.$USER /opt/CTFd-${CTFD_VERSION}
+sudo chown -R ctfd.ctfd /opt/CTFd-${CTFD_VERSION}
 sudo chmod 775 /opt/CTFd-${CTFD_VERSION}/.
 
-# install docker
-sudo bash /opt/CTFd-${CTFD_VERSION}/scripts/install_docker.sh
+#install pyenv
+sudo su ctfd -c "curl https://pyenv.run | bash"
 
-# build and pull all the containers
-cd /opt/CTFd-${CTFD_VERSION}
-sudo docker-compose pull
-sudo docker build .
+# add vars and evals to all shells
+echo "export PYENV_ROOT=\"$HOME/.pyenv\"" >> /etc/profile.d/pyenv.sh
+echo "export PATH=\"$PYENV_ROOT/bin:$PATH\"" >> /etc/profile.d/pyenv.sh
+echo "eval \"$(pyenv init --path)\""  >> /etc/profile.d/pyenv.sh
+echo "eval \"$(pyenv virtualenv-init -)\"" >> /etc/profile.d/pyenv.sh
+sudo chmod +x /etc/profile.d/pyenv.sh
+
+# set up matching py
+sudo su - ctfd -c "pyenv install 3.7.10"
+sudo su - ctfd -c "pyenv virtualenv 3.7.10 ctfd"
+
+cd /opt/CTFd-${CTFD_VERSION}/
+/opt/ctfd-test/.pyenv/bin/pyenv local ctfd
+
